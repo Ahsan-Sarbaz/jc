@@ -31,13 +31,13 @@ void TypeChecker::CheckDataType(Expression* expression)
 			{
 				if (IsTypeCompatible(arg->data_type, function->params[i].data_type))
 				{
-					context->Warning("Implicit Conversion: " + std::string(DataTypeToString(arg->data_type)) + " -> " + 
-						std::string(DataTypeToString(function->params[i].data_type)), 0, 0);
+					context->Warning("Implicit Conversion: " + std::string(TypeToString(arg->data_type)) + " -> " + 
+						std::string(TypeToString(function->params[i].data_type)), 0, 0);
 				}
 				else
 				{
-					context->Error("Type Mismatch: " + std::string(DataTypeToString(arg->data_type)) + " != " +
-						std::string(DataTypeToString(function->params[i].data_type)), 0, 0);
+					context->Error("Type Mismatch: " + std::string(TypeToString(arg->data_type)) + " != " +
+						std::string(TypeToString(function->params[i].data_type)), 0, 0);
 				}
 			}
 			i++;
@@ -52,13 +52,13 @@ void TypeChecker::CheckDataType(Expression* expression)
 		{
 			if (IsTypeCompatible(be->lhs->data_type, be->rhs->data_type))
 			{
-				context->Warning("Implicit Conversion: " + std::string(DataTypeToString(be->lhs->data_type)) + " -> " +
-					std::string(DataTypeToString(be->rhs->data_type)), 0, 0);
+				context->Warning("Implicit Conversion: " + std::string(TypeToString(be->lhs->data_type)) + " -> " +
+					std::string(TypeToString(be->rhs->data_type)), 0, 0);
 			}
 			else
 			{
-				context->Error("Type Mismatch: " + std::string(DataTypeToString(be->lhs->data_type)) + " != " +
-					std::string(DataTypeToString(be->rhs->data_type)), 0, 0);
+				context->Error("Type Mismatch: " + std::string(TypeToString(be->lhs->data_type)) + " != " +
+					std::string(TypeToString(be->rhs->data_type)), 0, 0);
 			}
 		}
 	}
@@ -71,13 +71,13 @@ void TypeChecker::CheckDataType(Expression* expression)
 		{
 			if (IsTypeCompatible(ae->lhs->data_type, ae->rhs->data_type))
 			{
-				context->Warning("Implicit Conversion: " + std::string(DataTypeToString(ae->lhs->data_type)) + " -> " +
-					std::string(DataTypeToString(ae->rhs->data_type)), 0, 0);
+				context->Warning("Implicit Conversion: " + std::string(TypeToString(ae->lhs->data_type)) + " -> " +
+					std::string(TypeToString(ae->rhs->data_type)), 0, 0);
 			}
 			else
 			{
-				context->Error("Type Mismatch: " + std::string(DataTypeToString(ae->lhs->data_type)) + " != " +
-					std::string(DataTypeToString(ae->rhs->data_type)), 0, 0);
+				context->Error("Type Mismatch: " + std::string(TypeToString(ae->lhs->data_type)) + " != " +
+					std::string(TypeToString(ae->rhs->data_type)), 0, 0);
 			}
 		}
 	}
@@ -111,13 +111,13 @@ void TypeChecker::CheckDataType(Statement* statement)
 			{
 				if (IsTypeCompatible(arg->data_type, function->params[i].data_type))
 				{
-					context->Warning("Implicit Conversion: " + std::string(DataTypeToString(arg->data_type)) + " -> " +
-						std::string(DataTypeToString(function->params[i].data_type)), 0, 0);
+					context->Warning("Implicit Conversion: " + std::string(TypeToString(arg->data_type)) + " -> " +
+						std::string(TypeToString(function->params[i].data_type)), 0, 0);
 				}
 				else
 				{
-					context->Error("Type Mismatch: " + std::string(DataTypeToString(arg->data_type)) + " != " +
-						std::string(DataTypeToString(function->params[i].data_type)), 0, 0);
+					context->Error("Type Mismatch: " + std::string(TypeToString(arg->data_type)) + " != " +
+						std::string(TypeToString(function->params[i].data_type)), 0, 0);
 				}
 			}
 			i++;
@@ -133,18 +133,21 @@ void TypeChecker::CheckDataType(Statement* statement)
 	case ASTNodeType::DeclarationStatement:
 	{
 		auto ds = static_cast<DeclarationStatement*>(statement);
-		CheckDataType(ds->expression);
-		if (ds->data_type != ds->expression->data_type)
+		if (ds->expression)
 		{
-			if (IsTypeCompatible(ds->data_type, ds->expression->data_type))
+			CheckDataType(ds->expression);
+			if (ds->data_type != ds->expression->data_type)
 			{
-				context->Warning("Implicit Conversion: " + std::string(DataTypeToString(ds->data_type)) + " -> " +
-					std::string(DataTypeToString(ds->expression->data_type)), 0, 0);
-			}
-			else
-			{
-				context->Error("Type Mismatch: " + std::string(DataTypeToString(ds->data_type)) + " != " +
-					std::string(DataTypeToString(ds->expression->data_type)), 0, 0);
+				if (IsTypeCompatible(ds->data_type, ds->expression->data_type))
+				{
+					context->Warning("Implicit Conversion: " + std::string(TypeToString(ds->data_type)) + " -> " +
+						std::string(TypeToString(ds->expression->data_type)), 0, 0);
+				}
+				else
+				{
+					context->Error("Type Mismatch: " + std::string(TypeToString(ds->data_type)) + " != " +
+						std::string(TypeToString(ds->expression->data_type)), 0, 0);
+				}
 			}
 		}
 	}
@@ -158,18 +161,19 @@ void TypeChecker::CheckDataType(Statement* statement)
 		{
 			if (IsTypeCompatible(as->lhs->data_type, as->rhs->data_type))
 			{
-				context->Warning("Implicit Conversion: " + std::string(DataTypeToString(as->lhs->data_type)) + " -> " +
-					std::string(DataTypeToString(as->rhs->data_type)), 0, 0);
+				context->Warning("Implicit Conversion: " + std::string(TypeToString(as->lhs->data_type)) + " -> " +
+					std::string(TypeToString(as->rhs->data_type)), 0, 0);
 			}
 			else
 			{
-				context->Error("Type Mismatch: " + std::string(DataTypeToString(as->lhs->data_type)) + " != " +
-					std::string(DataTypeToString(as->rhs->data_type)), 0, 0);
+				context->Error("Type Mismatch: " + std::string(TypeToString(as->lhs->data_type)) + " != " +
+					std::string(TypeToString(as->rhs->data_type)), 0, 0);
 			}
 		}
 	}
 	break;
 	case ASTNodeType::CppBlock:
+	case ASTNodeType::StructDefinationStatement:
 	case ASTNodeType::ExternFunctionStatement:
 	case ASTNodeType::ExternVariableStatement:
 		break;
@@ -190,75 +194,33 @@ void TypeChecker::CheckDataType()
 	}
 }
 
-bool TypeChecker::IsTypeCompatible(DataType is, DataType wants)
+bool TypeChecker::IsTypeCompatible(Type is, Type wants)
 {
-	switch (wants)
+	if (is == wants)
 	{
-	case DataType::Void:
-		return is == DataType::Void;
-	case DataType::Int8:
-		return 
-			is == DataType::Int8 || is == DataType::Uint8;
-	case DataType::Int16:
-		return 
-			is == DataType::Int16 || is == DataType::Uint16 ||
-			is == DataType::Int8 || is == DataType::Uint8;
-	case DataType::Int32:
-		return 
-			is == DataType::Int32 || is == DataType::Uint32 || 
-			is == DataType::Int16 || is == DataType::Uint16 || 
-			is == DataType::Int8 || is == DataType::Uint8;
-	
-	case DataType::Int64:
-		return 
-			is == DataType::Int64 || is == DataType::Uint64 ||
-			is == DataType::Int32 || is == DataType::Uint32 ||
-			is == DataType::Int16 || is == DataType::Uint16 || 
-			is == DataType::Int8 || is == DataType::Uint8;
+		return true;
+	}
 
-	case DataType::Float:
-		return 
-			is == DataType::Float ||
-			is == DataType::Int64 || is == DataType::Uint64 ||
-			is == DataType::Int32 || is == DataType::Uint32 ||
-			is == DataType::Int16 || is == DataType::Uint16 ||
-			is == DataType::Int8 || is == DataType::Uint8;
+	if (is.IsPrimitive() && wants.IsPrimitive())
+	{
+		if (is.IsPrimitiveCompatible(wants))
+		{
+			return true;
+		}
+	}
+	else
+	{
+		if (is.IsPrimitive() || wants.IsPrimitive()) return false;
 
-	case DataType::Double:
-		return
-			is == DataType::Double ||
-			is == DataType::Float ||
-			is == DataType::Int64 || is == DataType::Uint64 ||
-			is == DataType::Int32 || is == DataType::Uint32 ||
-			is == DataType::Int16 || is == DataType::Uint16 ||
-			is == DataType::Int8 || is == DataType::Uint8;
+		auto is_id = context->GetType(is.name);
+		auto wants_id = context->GetType(wants.name);
 
-	case DataType::Bool:
-		return is == DataType::Bool;
-	
-	case DataType::String:
-		return is == DataType::String;
-	
-	case DataType::Uint8:
-		return is == DataType::Uint8;
-	
-	case DataType::Uint16:
-		return 
-			is == DataType::Uint16 ||
-			is == DataType::Uint8;
-	
-	case DataType::Uint32:
-		return
-			is == DataType::Uint32 || 
-			is == DataType::Uint16 ||
-			is == DataType::Uint8;
-	
-	case DataType::Uint64:
-		return 
-			is == DataType::Uint64 ||
-			is == DataType::Uint32 || 
-			is == DataType::Uint16 || 
-			is == DataType::Uint8;
+		if (is_id == wants_id)
+		{
+			return true;
+		}
+
+		return false;
 	}
 
 	return false;

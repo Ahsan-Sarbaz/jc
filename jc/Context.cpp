@@ -96,19 +96,43 @@ void Context::CreateProgram(const std::vector<Function*>& functions, const std::
 	program = new Program(functions, statements);
 }
 
+Type Context::CreateType(const std::string_view& name)
+{
+	Type type = Type{ (TypeID)(type_index++), name };
+	auto it = types.find(name);
+	if (it != types.end())
+	{
+		Error("Type " + std::string(name) + " already exists", 0, 0);
+		return Type{};
+	}
+	types[name] = type;
+	return type;
+}
+
+Type Context::GetType(const std::string_view& name)
+{
+	auto it = types.find(name);
+	if (it != types.end())
+	{
+		return it->second;
+	}
+	Error("Type " + std::string(name) + " does not exist", 0, 0);
+	return Type{};
+}
+
 Variable* Context::GetVariableFromScope(const std::string_view& name)
 {
 	return current_scope->GetVariable(name);
 }
 
-Variable* Context::AddVariableToScope(const std::string_view& name, DataType data_type)
+Variable* Context::AddVariableToScope(const std::string_view& name, Type data_type)
 {
 	current_scope->variables[name] = new Variable(name, data_type);
 	variables[name] = current_scope->variables[name];
 	return current_scope->variables[name];
 }
 
-DataType Context::GetVariableDataType(const std::string_view& name)
+Type Context::GetVariableDataType(const std::string_view& name)
 {
 	auto it = variables.find(name);
 	if (it != variables.end())
@@ -116,7 +140,7 @@ DataType Context::GetVariableDataType(const std::string_view& name)
 		return it->second->data_type;
 	}
 
-	return DataType::None;
+	return Type{};
 }
 
 Scope* Context::GetParentScope()
@@ -158,7 +182,7 @@ FunctionPrototype* Context::GetFunctionPrototype(const std::string_view& name)
 	return nullptr;
 }
 
-DataType Context::GetFunctionReturnType(const std::string_view& name)
+Type Context::GetFunctionReturnType(const std::string_view& name)
 {
 	auto it = functions.find(name);
 	if (it != functions.end())

@@ -29,6 +29,10 @@ void Parser::Parse()
 		{
 			statements.push_back(ParseCpp());
 		}
+		else if (Peek().type == TokenType::Struct)
+		{
+			statements.push_back(ParseStruct());
+		}
 		else if (Peek().type == TokenType::Extern)
 		{
 			if (Peek(1).type == TokenType::Function)
@@ -73,12 +77,12 @@ Expression* Parser::ParseFactor()
 			std::from_chars(number.data(), number.data() + number.size(), numeric_value);
 			if (numeric_value >= FLT_MIN && numeric_value <= FLT_MAX)
 			{
-				value.type = DataType::Float;
+				value.type = Type::get_float();
 				value.float_ = float(numeric_value);
 			}
 			else
 			{
-				value.type = DataType::Float;
+				value.type = Type::get_double();
 				value.double_ = double(numeric_value);
 
 			}
@@ -86,7 +90,6 @@ Expression* Parser::ParseFactor()
 		}
 		else
 		{
-			// TODO: this does not support unsigned numbers. add support for unsigned numbers
 			int64_t numeric_value;
 
 			int base = 10;
@@ -118,46 +121,46 @@ Expression* Parser::ParseFactor()
 			{
 				if (numeric_value <= UINT8_MAX)
 				{
-					value.type = DataType::Uint8;
+					value.type = Type::get_int8_t();
 					value.unsigned_integer = (uint64_t)numeric_value;
 				}
 				else if (numeric_value <= UINT16_MAX)
 				{
-					value.type = DataType::Uint16;
+					value.type = Type::get_int16_t();
 					value.unsigned_integer = (uint64_t)numeric_value;
 				}
 				else if (numeric_value <= UINT32_MAX)
 				{
-					value.type = DataType::Uint32;
+					value.type = Type::get_int32_t();
 					value.unsigned_integer = (uint64_t)numeric_value;
 				}
 				else
 				{
-					value.type = DataType::Uint64;
+					value.type = Type::get_int64_t();
 					value.unsigned_integer = (uint64_t)numeric_value;
 				}
 			}
 			else
 			{
-				if (numeric_value >= INT8_MIN && numeric_value <= INT8_MAX)
+				if (numeric_value <= UINT8_MAX)
 				{
-					value.type = DataType::Int8;
-					value.integer = (uint64_t)numeric_value;
+					value.type = Type::get_uint8_t();
+					value.unsigned_integer = (uint64_t)numeric_value;
 				}
-				else if (numeric_value >= INT16_MIN && numeric_value <= INT16_MAX)
+				else if (numeric_value <= INT16_MAX)
 				{
-					value.type = DataType::Int16;
-					value.integer = (uint64_t)numeric_value;
+					value.type = Type::get_uint16_t();
+					value.unsigned_integer = (uint64_t)numeric_value;
 				}
-				else if (numeric_value >= INT32_MIN && numeric_value <= INT32_MAX)
+				else if (numeric_value <= INT32_MAX)
 				{
-					value.type = DataType::Int32;
-					value.integer = (uint64_t)numeric_value;
+					value.type = Type::get_uint32_t();
+					value.unsigned_integer = (uint64_t)numeric_value;
 				}
 				else
 				{
-					value.type = DataType::Int64;
-					value.integer = (uint64_t)numeric_value;
+					value.type = Type::get_uint64_t();
+					value.unsigned_integer = (uint64_t)numeric_value;
 				}
 			}
 
@@ -178,7 +181,7 @@ Expression* Parser::ParseFactor()
 			std::string message = "Variable not found: " + std::string(identifier);
 			context->Error(message, Peek().line, Peek().column);
 		}
-		return new Variable(identifier, DataType::Void);
+		return new Variable(identifier, Type{});
 	}
 	else if (Peek().type == TokenType::LeftParen)
 	{
@@ -254,7 +257,7 @@ AssignmentExpression* Parser::ParseAssignmentExpression()
 	auto name = Expect(TokenType::Identifier).value;
 	Expect(TokenType::Equal);
 	auto expression = ParseExpression();
-	return new AssignmentExpression(new Variable(name, DataType::Void), expression);
+	return new AssignmentExpression(new Variable(name, Type{}), expression);
 }
 
 AssignmentStatement* Parser::ParseAssignmentStatement()
@@ -504,7 +507,7 @@ Function* Parser::ParseFunction()
 	while (Peek().type != TokenType::RightParen)
 	{
 		auto arg_name = Expect(TokenType::Identifier).value;
-		auto datatype = ExpectDataType();
+		auto datatype = ExpectType();
 		params.emplace_back(arg_name, datatype);
 
 		context->AddVariableToScope(arg_name, datatype);
@@ -514,7 +517,7 @@ Function* Parser::ParseFunction()
 		Expect(TokenType::Comma);
 	}
 	Expect(TokenType::RightParen);
-	auto datatype = ExpectDataType();
+	auto datatype = ExpectType();
 	// don't create a new scope
 	auto body = ParseBlock(false);
 	FunctionPrototype* protype = new FunctionPrototype(datatype, name, params);
@@ -552,11 +555,12 @@ DeclarationStatement* Parser::ParseDeclarationStatement()
 	// <assigment> ::= "let" <identifier> ( <data_type> | e ) "=" <expression> ";" 
 	Expect(TokenType::Let);
 	auto name = Expect(TokenType::Identifier).value;
-	auto data_type = DataType::Void;
+	auto data_type = ExpectType();
 	if (Peek().type != TokenType::Equal)
 	{
-		data_type = ExpectDataType();
-		Expect(TokenType::Equal);
+		Expect(TokenType::SemiColon);
+		context->AddVariableToScope(name, data_type);
+		return new DeclarationStatement(name, data_type, nullptr);
 	}
 	else
 	{
@@ -587,14 +591,14 @@ ExternFunctionStatement* Parser::ParseExternFunctionStatement()
 	while (Peek().type != TokenType::RightParen)
 	{
 		auto arg_name = Expect(TokenType::Identifier).value;
-		auto datatype = ExpectDataType();
+		auto datatype = ExpectType();
 		params.emplace_back(arg_name, datatype);
 		if (Peek().type == TokenType::RightParen)
 			break;
 		Expect(TokenType::Comma);
 	}
 	Expect(TokenType::RightParen);
-	auto return_type = ExpectDataType();
+	auto return_type = ExpectType();
 	Expect(TokenType::SemiColon);
 
 	auto prototype = new FunctionPrototype(return_type, name, params);
@@ -608,12 +612,34 @@ ExternVariableStatement* Parser::ParseExternVariableStatement()
 	// <extern_var> := "extern" <identifier> <data_type> ";"
 	Expect(TokenType::Extern);
 	auto name = Expect(TokenType::Identifier).value;
-	auto data_type = ExpectDataType();
+	auto data_type = ExpectType();
 	Expect(TokenType::SemiColon);
 
 	context->AddVariableToScope(name, data_type);
 
 	return new ExternVariableStatement(name, data_type);
+}
+
+StructDefinationStatement* Parser::ParseStruct()
+{
+	Expect(TokenType::Struct);
+	auto name = Expect(TokenType::Identifier).value;
+	Expect(TokenType::LeftBrace);
+	std::vector<StructField> fields;
+	while (Peek().type != TokenType::RightBrace)
+	{
+		auto field_name = Expect(TokenType::Identifier).value;
+		auto field_type = ExpectType();
+		fields.emplace_back(field_name, field_type);
+		if (Peek().type == TokenType::RightBrace)
+			break;
+		Expect(TokenType::Comma);
+	}
+	Expect(TokenType::RightBrace);
+
+	context->CreateType(name);
+
+	return new StructDefinationStatement(name, fields);
 }
 
 Token Parser::Expect(TokenType type)
@@ -633,31 +659,26 @@ Token Parser::Expect(TokenType type)
 	__assume(false);
 }
 
-DataType Parser::ExpectDataType()
+Type Parser::ExpectType()
 {
 	auto token = Eat();
 	switch (token.type)
 	{
-	case TokenType::I8: return DataType::Int8;
-	case TokenType::I16: return DataType::Int16;
-	case TokenType::I32: return DataType::Int32;
-	case TokenType::I64: return DataType::Int64;
-	case TokenType::U8: return DataType::Uint8;
-	case TokenType::U16: return DataType::Uint16;
-	case TokenType::U32: return DataType::Uint32;
-	case TokenType::U64: return DataType::Uint64;
-	case TokenType::F32: return DataType::Float;
-	case TokenType::F64: return DataType::Double;
-	case TokenType::Bool: return DataType::Bool;
-	case TokenType::Str: return DataType::String;
-	case TokenType::Void: return DataType::Void;
-	default:
-	{
-		auto error = "Expected something, got something else";
-		context->Error(error, Peek().line, Peek().column);
-		assert(false);
-	}
-	break;
+	case TokenType::I8: return Type::get_int8_t();
+	case TokenType::I16: return Type::get_int16_t();
+	case TokenType::I32: return Type::get_int32_t();
+	case TokenType::I64: return Type::get_int64_t();
+	case TokenType::U8: return Type::get_uint8_t();
+	case TokenType::U16: return Type::get_uint16_t();
+	case TokenType::U32: return Type::get_uint32_t();
+	case TokenType::U64: return Type::get_uint64_t();
+	case TokenType::F32: return Type::get_float();
+	case TokenType::F64: return Type::get_double();
+	case TokenType::Bool: return Type::get_bool();
+	case TokenType::Str: return Type::get_string();
+	case TokenType::Char: return Type::get_char();
+	case TokenType::Void: return Type::get_void();
+	default: return Type(TYPE_UNKNOWN, token.value);
 	}
 
 	__assume(false);
@@ -679,6 +700,7 @@ bool Parser::IsKeyword(TokenType type)
 	case TokenType::F64: return true;
 	case TokenType::Bool: return true;
 	case TokenType::Str: return true;
+	case TokenType::Char: return true;
 	case TokenType::Void: return true;
 	case TokenType::If: return true;
 	case TokenType::Else: return true;
@@ -688,6 +710,7 @@ bool Parser::IsKeyword(TokenType type)
 	case TokenType::Function: return true;
 	case TokenType::Extern: return true;
 	case TokenType::Cpp: return true;
+	case TokenType::Struct: return true;
 	}
 
 	return false;
@@ -710,6 +733,7 @@ bool Parser::IsDataType(TokenType type)
 	case TokenType::F64: return true;
 	case TokenType::Bool: return true;
 	case TokenType::Str: return true;
+	case TokenType::Char: return true;
 	case TokenType::Void: return true;
 	}
 

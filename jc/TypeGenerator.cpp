@@ -18,7 +18,7 @@ void TypeGenertaor::GenerateDataType(Expression* expression)
 		expression->data_type = ((NumberLiteral*)expression)->value.type;
 		break;
 	case ASTNodeType::StringLiteral:
-		expression->data_type = DataType::String;
+		expression->data_type = Type::get_string();
 		break;
 	case ASTNodeType::Variable:
 		expression->data_type = context->GetVariableDataType(((Variable*)expression)->name);
@@ -65,8 +65,6 @@ void TypeGenertaor::GenerateDataType(Statement* statement)
 			GenerateDataType(arg);
 		}
 		break;
-	case ASTNodeType::CppBlock:
-		break;
 	case ASTNodeType::ExpressionStatement:
 		GenerateDataType(static_cast<ExpressionStatement*>(statement)->expression);
 		break;
@@ -74,7 +72,8 @@ void TypeGenertaor::GenerateDataType(Statement* statement)
 		GenerateDataType(static_cast<ReturnStatement*>(statement)->expression);
 		break;
 	case ASTNodeType::DeclarationStatement:
-		GenerateDataType(static_cast<DeclarationStatement*>(statement)->expression);
+		if (static_cast<DeclarationStatement*>(statement)->expression)
+			GenerateDataType(static_cast<DeclarationStatement*>(statement)->expression);
 		break;
 	case ASTNodeType::AssignmentStatement:
 		GenerateDataType(static_cast<AssignmentStatement*>(statement)->lhs);
@@ -94,6 +93,9 @@ void TypeGenertaor::GenerateDataType(Statement* statement)
 			GenerateDataType(statement);
 		}
 		break;
+
+	case ASTNodeType::CppBlock:
+	case ASTNodeType::StructDefinationStatement:
 	case ASTNodeType::ExternFunctionStatement:
 	case ASTNodeType::ExternVariableStatement:
 		break;
@@ -116,5 +118,5 @@ void TypeGenertaor::GenerateDataType()
 	for (auto& function : context->program->functions)
 	{
 		GenerateDataType(function);
-	};
+	}
 }

@@ -136,6 +136,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Parser.cpp" />
     <ClCompile Include="Scope.cpp" />
+    <ClCompile Include="Type.cpp" />
     <ClCompile Include="TypeChecker.cpp" />
     <ClCompile Include="TypeGenerator.cpp" />
     <ClCompile Include="Utils.cpp" />
@@ -148,6 +149,7 @@
     <ClInclude Include="Parser.hpp" />
     <ClInclude Include="Scope.hpp" />
     <ClInclude Include="Token.hpp" />
+    <ClInclude Include="Type.hpp" />
     <ClInclude Include="TypeChecker.hpp" />
     <ClInclude Include="TypeGenerator.hpp" />
     <ClInclude Include="Utils.hpp" />

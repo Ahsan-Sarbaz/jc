@@ -14,7 +14,7 @@ private:
 	void CheckDataType(Statement* statement);
 	void CheckDataType();
 
-	bool IsTypeCompatible(DataType is, DataType wants);
+	bool IsTypeCompatible(Type is, Type wants);
 
 	Context* context;
 };

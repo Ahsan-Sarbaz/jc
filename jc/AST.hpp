@@ -34,6 +34,7 @@ enum class ASTNodeType
 	CppBlock,
 	ExternVariableStatement,
 	ExternFunctionStatement,
+	StructDefinationStatement,
 };
 
 struct Scope;
@@ -46,23 +47,23 @@ struct ASTNode
 struct Parameter : public ASTNode
 {
 	std::string_view name;
-	DataType data_type;
+	Type data_type;
 
-	explicit Parameter(const std::string_view& name, DataType data_type);
+	explicit Parameter(const std::string_view& name, Type data_type);
 };
 
 struct FunctionPrototype : public ASTNode
 {
 	std::string_view name;
 	std::vector<Parameter> params;
-	DataType return_type;
+	Type return_type;
 
-	explicit FunctionPrototype(DataType return_type, const std::string_view& name, const std::vector<Parameter>& params);
+	explicit FunctionPrototype(Type return_type, const std::string_view& name, const std::vector<Parameter>& params);
 };
 
 struct Expression : public ASTNode
 {
-	DataType data_type = DataType::None;
+	Type data_type = Type{ TypeID::TYPE_UNKNOWN , ""};
 };
 
 struct Argument : public Expression
@@ -174,7 +175,7 @@ struct Variable : public Expression
 {
 	std::string_view name;
 
-	explicit Variable(const std::string_view& name, DataType data_type);
+	explicit Variable(const std::string_view& name, Type data_type);
 };
 
 struct Program : public ASTNode
@@ -231,10 +232,10 @@ struct ForStatement : public Statement
 struct DeclarationStatement : public Statement
 {
 	std::string_view name;
-	DataType data_type;
+	Type data_type;
 	Expression* expression;
 	
-	explicit DeclarationStatement(std::string_view name, DataType data_type, Expression* expression);
+	explicit DeclarationStatement(std::string_view name, Type data_type, Expression* expression);
 };
 
 struct CppBlock : public Statement
@@ -247,9 +248,9 @@ struct CppBlock : public Statement
 struct ExternVariableStatement : public Statement
 {
 	std::string_view name;
-	DataType data_type;
+	Type data_type;
 	
-	explicit ExternVariableStatement(std::string_view name, DataType data_type);
+	explicit ExternVariableStatement(std::string_view name, Type data_type);
 };
 
 struct ExternFunctionStatement : public Statement
@@ -260,6 +261,21 @@ struct ExternFunctionStatement : public Statement
 	explicit ExternFunctionStatement(std::string_view name, FunctionPrototype* prototype);
 };
 
-DataType DataTypeFromString(const std::string_view& name);
-const char* DataTypeToString(DataType data_type);
+struct StructField
+{
+	std::string_view name;
+	Type data_type;
 
+	explicit StructField(std::string_view name, Type data_type);
+};
+
+struct StructDefinationStatement : public Statement
+{
+	std::string_view name;
+	std::vector<StructField> fields;
+
+	explicit StructDefinationStatement(std::string_view name, std::vector<StructField> fields);
+};
+
+Type TypeFromString(const std::string_view& name);
+std::string_view TypeToString(Type data_type);

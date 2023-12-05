@@ -14,7 +14,7 @@ public:
 	inline Token Peek(int offset = 0) { return context->tokens[cursor + offset]; }
 	inline Token Eat() { return context->tokens[cursor++]; }
 	Token Expect(TokenType type);
-	DataType ExpectDataType();
+	Type ExpectType();
 	bool IsKeyword(TokenType type);
 	bool IsDataType(TokenType type);
 	bool IsUnaryOperator(TokenType type);
@@ -41,6 +41,7 @@ private:
 	CppBlock* ParseCpp();
 	ExternFunctionStatement* ParseExternFunctionStatement();
 	ExternVariableStatement* ParseExternVariableStatement();
+	StructDefinationStatement* ParseStruct();
 
 	Context* context;
 	int cursor = 0;

@@ -1,73 +1,94 @@
 #include "AST.hpp"
 #include <cassert>
 
-DataType DataTypeFromString(const std::string_view& name)
+Type TypeFromString(const std::string_view& name)
 {
 	if (name == "i8") {
-		return DataType::Int8;
+		return Type::get_uint8_t();
 	}
 	if (name == "i16") {
-		return DataType::Int16;
+		return Type::get_int16_t();
 	}
 	if (name == "i32") {
-		return DataType::Int32;
+		return Type::get_int32_t();
 	}
 	if (name == "i64") {
-		return DataType::Int64;
+		return Type::get_int64_t();
 	}
 	if (name == "u8") {
-		return DataType::Uint8;
+		return Type::get_uint8_t();
 	}
 	if (name == "u16") {
-		return DataType::Uint16;
+		return Type::get_uint16_t();
 	}
 	if (name == "u32") {
-		return DataType::Uint32;
+		return Type::get_uint32_t();
 	}
 	if (name == "u64") {
-		return DataType::Uint64;
+		return Type::get_uint64_t();
 	}
 	if (name == "f32") {
-		return DataType::Float;
+		return Type::get_float();
 	}
 	if (name == "f64") {
-		return DataType::Double;
+		return Type::get_double();
 	}
 	if (name == "bool") {
-		return DataType::Bool;
+		return Type::get_bool();
 	}
 	if (name == "str") {
-		return DataType::String;
+		return Type::get_string();
+	}
+	if (name == "char") {
+		return Type::get_char();
 	}
 	if (name == "void") {
-		return DataType::Void;
+		return Type::get_void();
 	}
 
-	return DataType::Void;
+	return Type{TYPE_UNKNOWN, "UnknownType"};
 }
 
-const char* DataTypeToString(DataType data_type)
+std::string_view TypeToString(Type data_type)
 {
-	switch (data_type)
+	if (data_type.IsPrimitive())
 	{
-	case DataType::None: return "none";
-	case DataType::Int8: return "i8";
-	case DataType::Int16: return "i16";
-	case DataType::Int32: return "i32";
-	case DataType::Int64: return "i64";
-	case DataType::Uint8: return "u8";
-	case DataType::Uint16: return "u16";
-	case DataType::Uint32: return "u32";
-	case DataType::Uint64: return "u64";
-	case DataType::Float: return "f32";
-	case DataType::Double: return "f64";
-	case DataType::Bool: return "bool";
-	case DataType::String: return "str";
-	case DataType::Void: return "void";
+		switch (data_type.id)
+		{
+		case TYPE_INT8:
+			return "i8";
+		case TYPE_INT16:
+			return "i16";
+		case TYPE_INT32:
+			return "i32";
+		case TYPE_INT64:
+			return "i64";
+		case TYPE_UINT8:
+			return "u8";
+		case TYPE_UINT16:
+			return "u16";
+		case TYPE_UINT32:
+			return "u32";
+		case TYPE_UINT64:
+			return "u64";
+		case TYPE_FLOAT:
+			return "f32";
+		case TYPE_DOUBLE:
+			return "f64";
+		case TYPE_BOOL:
+			return "bool";
+		case TYPE_STRING:
+			return "str";
+		case TYPE_CHAR:
+			return "char";
+		case TYPE_VOID:
+			return "void";
+		}
 	}
-
-	assert(false);
-	__assume(false);
+	else
+	{
+		return data_type.name;
+	}
 }
 
 NumberLiteral::NumberLiteral(Value value)
@@ -90,7 +111,7 @@ ReturnStatement::ReturnStatement(Expression* expression)
 	this->node_type = ASTNodeType::ReturnStatement;
 }
 
-Parameter::Parameter(const std::string_view& name, DataType data_type)
+Parameter::Parameter(const std::string_view& name, Type data_type)
 	:name(name)
 	, data_type(data_type)
 {
@@ -104,7 +125,7 @@ Function::Function(FunctionPrototype* prototype, BlockNode* body)
 	this->node_type = ASTNodeType::Function;
 }
 
-Variable::Variable(const std::string_view& name, DataType data_type)
+Variable::Variable(const std::string_view& name, Type data_type)
 	:name(name)
 {
 	this->node_type = ASTNodeType::Variable;
@@ -118,7 +139,7 @@ Program::Program(const std::vector<Function*>& functions, const std::vector<Stat
 	this->node_type = ASTNodeType::Program;
 }
 
-FunctionPrototype::FunctionPrototype(DataType return_type, const std::string_view& name, const std::vector<Parameter>& params)
+FunctionPrototype::FunctionPrototype(Type return_type, const std::string_view& name, const std::vector<Parameter>& params)
 	:return_type(return_type)
 	, name(name)
 	, params(params)
@@ -180,7 +201,7 @@ UnaryExpression::UnaryExpression(UnaryOperatorType op, Expression* expression)
 	this->node_type = ASTNodeType::UnaryExpression;
 }
 
-DeclarationStatement::DeclarationStatement(std::string_view name, DataType data_type, Expression* expression)
+DeclarationStatement::DeclarationStatement(std::string_view name, Type data_type, Expression* expression)
 	: name(name), data_type(data_type), expression(expression)
 {
 	this->node_type = ASTNodeType::DeclarationStatement;
@@ -211,7 +232,7 @@ CppBlock::CppBlock(std::string_view code)
 	this->node_type = ASTNodeType::CppBlock;
 }
 
-ExternVariableStatement::ExternVariableStatement(std::string_view name, DataType data_type)
+ExternVariableStatement::ExternVariableStatement(std::string_view name, Type data_type)
 	: name(name), data_type(data_type)
 {
 	this->node_type = ASTNodeType::ExternVariableStatement;
@@ -221,4 +242,15 @@ ExternFunctionStatement::ExternFunctionStatement(std::string_view name, Function
 	: name(name), prototype(prototype)
 {
 	this->node_type = ASTNodeType::ExternFunctionStatement;
+}
+
+StructField::StructField(std::string_view name, Type data_type)
+	: name(name), data_type(data_type)
+{
+}
+
+StructDefinationStatement::StructDefinationStatement(std::string_view name, std::vector<StructField> fields)
+	: name(name), fields(fields)
+{
+	this->node_type = ASTNodeType::StructDefinationStatement;
 }

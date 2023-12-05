@@ -1,51 +1,14 @@
 #pragma once
+#include "Type.hpp"
 #include <iostream>
-
-enum class DataType
-{
-	None,
-	Void,
-	Bool,
-	String,
-	Int8,
-	Int16,
-	Int32,
-	Int64,
-	Float,
-	Double,
-	Uint8,
-	Uint16,
-	Uint32,
-	Uint64,
-};
 
 struct Value
 {
-	DataType type;
+	Type type;
 
 	bool IsNumeric()
 	{
-		switch (type)
-		{
-		case DataType::Void:
-		case DataType::Bool:
-		case DataType::String:
-			return false;
-		case DataType::Int8:
-		case DataType::Int16:
-		case DataType::Int32:
-		case DataType::Int64:
-		case DataType::Float:
-		case DataType::Double:
-		case DataType::Uint8:
-		case DataType::Uint16:
-		case DataType::Uint32:
-		case DataType::Uint64:
-			return true;
-			break;
-		}
-
-		__assume(false);
+		return type.IsNumeric();
 	}
 
 	union
@@ -59,41 +22,41 @@ struct Value
 	// stream output
 	friend std::ostream& operator<<(std::ostream& out, const Value& value)
 	{
-		switch (value.type)
+		switch (value.type.id)
 		{
-		case DataType::Void:
-		{
-			out << value.integer;
-			break;
-		}
-		case DataType::Bool:
+		case TYPE_VOID:
 		{
 			out << value.integer;
 			break;
 		}
-		case DataType::String:
+		case TYPE_BOOL:
 		{
 			out << value.integer;
 			break;
 		}
-		case DataType::Int8:
-		case DataType::Int16:
-		case DataType::Int32:
-		case DataType::Int64:
+		case TYPE_STRING:
+		{
 			out << value.integer;
 			break;
-		case DataType::Uint8:
-		case DataType::Uint16:
-		case DataType::Uint32:
-		case DataType::Uint64:
+		}
+		case TYPE_INT8:
+		case TYPE_INT16:
+		case TYPE_INT32:
+		case TYPE_INT64:
+			out << value.integer;
+			break;
+		case TYPE_UINT8:
+		case TYPE_UINT16:
+		case TYPE_UINT32:
+		case TYPE_UINT64:
 			out << value.unsigned_integer;
 			break;
-		case DataType::Float:
+		case TYPE_FLOAT:
 		{
 			out << value.float_ << "f";
 			break;
 		}
-		case DataType::Double:
+		case TYPE_DOUBLE:
 		{
 			out << value.double_;
 			break;
