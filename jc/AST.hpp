@@ -35,12 +35,15 @@ enum class ASTNodeType
 	ExternVariableStatement,
 	ExternFunctionStatement,
 	StructDefinationStatement,
+	MemberAccessExpression,
 };
 
 struct Scope;
 
 struct ASTNode
 {
+	size_t line;
+	size_t column;
 	ASTNodeType node_type;
 };
 
@@ -266,15 +269,34 @@ struct StructField
 	std::string_view name;
 	Type data_type;
 
+	StructField() = default;
+
 	explicit StructField(std::string_view name, Type data_type);
 };
 
-struct StructDefinationStatement : public Statement
+struct StructDefination
 {
 	std::string_view name;
 	std::vector<StructField> fields;
 
-	explicit StructDefinationStatement(std::string_view name, std::vector<StructField> fields);
+	StructDefination() = default;
+
+	explicit StructDefination(std::string_view name, const std::vector<StructField>& fields);
+};
+
+struct StructDefinationStatement : public Statement
+{
+	StructDefination* defination;
+
+	explicit StructDefinationStatement(StructDefination* defination);
+};
+
+struct MemberAccessExpression : public Expression
+{
+	Expression* lhs;
+	std::string_view member;
+
+	explicit MemberAccessExpression(Expression* lhs, std::string_view member);
 };
 
 Type TypeFromString(const std::string_view& name);

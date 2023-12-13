@@ -59,7 +59,8 @@ Expression* Parser::ParseFactor()
 	// <factor> ::= <number> | <identifier> | <call> | "(" <expression> ")"
 	if (Peek().type == TokenType::Number)
 	{
-		auto number = Eat().value;
+		auto t = Eat();
+		auto number = t.value;
 		std::string number_without_underscores = std::string(number);
 
 		if (number.find('_'))
@@ -70,10 +71,11 @@ Expression* Parser::ParseFactor()
 			number = number_without_underscores;
 		}
 
+		Value value{};
+
 		if (number.find('.') != std::string::npos)
 		{
 			double numeric_value;
-			Value value{};
 			std::from_chars(number.data(), number.data() + number.size(), numeric_value);
 			if (numeric_value >= FLT_MIN && numeric_value <= FLT_MAX)
 			{
@@ -86,7 +88,6 @@ Expression* Parser::ParseFactor()
 				value.double_ = double(numeric_value);
 
 			}
-			return new NumberLiteral(value);
 		}
 		else
 		{
@@ -96,26 +97,31 @@ Expression* Parser::ParseFactor()
 			if (number[0] == '0')
 			{
 				number = number.substr(1);
-				if (number[0] == 'x' || number[0] == 'X')
+				if (!number.empty())
 				{
-					base = 16;
-					number = number.substr(1);
+					if (number[0] == 'x' || number[0] == 'X')
+					{
+						base = 16;
+						number = number.substr(1);
+					}
+					else if (number[0] == 'b' || number[0] == 'B')
+					{
+						base = 2;
+						number = number.substr(1);
+					}
+					else if (number[0] == 'o' || number[0] == 'O')
+					{
+						base = 8;
+						number = number.substr(1);
+					}
 				}
-				else if (number[0] == 'b' || number[0] == 'B')
+				else
 				{
-					base = 2;
-					number = number.substr(1);
-				}
-				else if (number[0] == 'o' || number[0] == 'O')
-				{
-					base = 8;
-					number = number.substr(1);
+					numeric_value = 0;
 				}
 			}
 
 			std::from_chars(number.data(), number.data() + number.size(), numeric_value, base);
-
-			Value value;
 
 			if (numeric_value > 0)
 			{
@@ -163,9 +169,13 @@ Expression* Parser::ParseFactor()
 					value.unsigned_integer = (uint64_t)numeric_value;
 				}
 			}
-
-			return new NumberLiteral(value);
 		}
+
+		auto result = new NumberLiteral(value);
+		result->line = t.line;
+		result->column = t.column;
+
+		return result;
 	}
 	else if (Peek().type == TokenType::Identifier)
 	{
@@ -173,27 +183,54 @@ Expression* Parser::ParseFactor()
 		{
 			return ParseCallExpression();
 		}
+		else if (Peek(1).type == TokenType::Dot)
+		{
+			auto t = Eat();
+			auto identifier = t.value;
+			auto v = context->GetVariableFromScope(identifier);
+			if (v == nullptr)
+			{
+				std::string message = "Variable not found: " + std::string(identifier);
+				context->Error(message, Peek().line, Peek().column);
+			}
 
-		auto identifier = Eat().value;
+			auto result = ParseMemberAccessExpression(new Variable(identifier, v ? v->data_type : Type{}));
+			result->line = t.line;
+			result->column = t.column;
+			return result;
+		}
+
+		auto t = Eat();
+		auto identifier = t.value;
+
 		auto v = context->GetVariableFromScope(identifier);
 		if (v == nullptr)
 		{
 			std::string message = "Variable not found: " + std::string(identifier);
 			context->Error(message, Peek().line, Peek().column);
 		}
-		return new Variable(identifier, Type{});
+
+		auto result = new Variable(identifier, v ? v->data_type : Type{});
+		result->line = t.line;
+		result->column = t.column;
+		return result;
 	}
 	else if (Peek().type == TokenType::LeftParen)
 	{
-		Eat();
+		auto t = Eat();
 		auto expression = ParseExpression();
 		Expect(TokenType::RightParen);
+		expression->line = t.line;
+		expression->column = t.column;
 		return expression;
 	}
 	else if (Peek().type == TokenType::StringLiteral)
 	{
-		auto value = Eat().value;
-		return new StringLiteral(value);
+		auto t = Eat();
+		auto result = new StringLiteral(t.value);
+		result->line = t.line;
+		result->column = t.column;
+		return result;
 	}
 	else if (IsUnaryOperator(Peek().type))
 	{
@@ -209,16 +246,23 @@ Expression* Parser::ParseTerm()
 {
 	// <term> ::= <factor> | <term> "*" <factor> | <term> "/" <factor> | <term> "%" <factor>
 
+	auto t = Peek();
 	auto lhs = ParseFactor();
+	lhs->line = t.line;
+	lhs->column = t.column;
 	switch (Peek().type)
 	{
 		case TokenType::Star:
 		case TokenType::Slash:
 		case TokenType::Modulo:
 		{
-			auto op = GetBinaryOperator(Eat().type);
+			auto _t = Eat();
+			auto op = GetBinaryOperator(_t.type);
 			auto rhs = ParseFactor();
-			return new BinaryExpression(lhs, op, rhs);
+			auto result = new BinaryExpression(lhs, op, rhs);
+			result->line = t.line;
+			result->column = t.column;
+			return result;
 		}
 	}
 
@@ -230,22 +274,33 @@ Expression* Parser::ParseExpression()
 	//<expression> :: = <term> | <expression> ">" <term> | <expression> "<" <term> | <expression> ">=" <term> | < expression> "<=" <term>
 	//<term> :: = <factor> | <term> "+" <factor> | <term> "-" <factor>
 
+	auto t = Peek();
+
 	auto lhs = ParseTerm();
+	lhs->line = t.line;
+	lhs->column = t.column;
 	if(Peek().type == TokenType::SemiColon)
 	{
 		return lhs;
 	}
 	else if (IsBinaryOperator(Peek().type))
 	{
-		auto op = GetBinaryOperator(Eat().type);
+		auto _t = Eat();
+		auto op = GetBinaryOperator(_t.type);
 		auto rhs = ParseExpression();
-		return new BinaryExpression(lhs, op, rhs);
+		auto result = new BinaryExpression(lhs, op, rhs);
+		result->line = t.line;
+		result->column = t.column;
+		return result;
 	}
 	else if (Peek().type == TokenType::Equal)
 	{
-		Eat();
+		auto _t = Eat();
 		auto rhs = ParseExpression();
-		return new AssignmentExpression(lhs, rhs);
+		auto result = new AssignmentExpression(lhs, rhs);
+		result->line = t.line;
+		result->column = t.column;
+		return result;
 	}
 
 	return lhs;
@@ -254,27 +309,39 @@ Expression* Parser::ParseExpression()
 AssignmentExpression* Parser::ParseAssignmentExpression()
 {
 	// <assigment> ::= <identifier> "=" <expression>
-	auto name = Expect(TokenType::Identifier).value;
+	auto t = Expect(TokenType::Identifier);
+	auto name = t.value;
 	Expect(TokenType::Equal);
 	auto expression = ParseExpression();
-	return new AssignmentExpression(new Variable(name, Type{}), expression);
+	auto result = new AssignmentExpression(new Variable(name, Type{}), expression);
+	result->line = t.line;
+	result->column = t.column;
+	return result;
 }
 
 AssignmentStatement* Parser::ParseAssignmentStatement()
 {
+	
 	// <assigment> ::= <identifier> "=" <expression> ";"
+	auto t = Peek();
 	auto expression = ParseAssignmentExpression();
 	Expect(TokenType::SemiColon);
-	return new AssignmentStatement(expression->lhs, expression->rhs);
+	auto result = new AssignmentStatement(expression->lhs, expression->rhs);
+	result->line = t.line;
+	result->column = t.column;
+	return result;
 }
 
 ReturnStatement* Parser::ParseReturnStatement()
 {
 	// <return_expression> ::= "return "<expression> ";"
-	Expect(TokenType::Return);
+	auto t = Expect(TokenType::Return);
 	auto expression = ParseExpression();
 	Expect(TokenType::SemiColon);
-	return new ReturnStatement(expression);
+	auto result = new ReturnStatement(expression);
+	result->line = t.line;
+	result->column = t.column;
+	return result;
 }
 
 CallExpression* Parser::ParseCallExpression()
@@ -282,7 +349,8 @@ CallExpression* Parser::ParseCallExpression()
 	// <call> ::= <identifier> "(" <args> ")"
 	// <args> ::= <expression> ("," <expression>)*
 	// <expression> ::= <expression> | <call_expression>
-	auto name = Expect(TokenType::Identifier).value;
+	auto t = Expect(TokenType::Identifier);
+	auto name = t.value;
 	auto p = context->GetFunctionPrototype(name);
 	if (p == nullptr)
 	{
@@ -294,32 +362,49 @@ CallExpression* Parser::ParseCallExpression()
 	std::vector<Argument*> args;
 	while (Peek().type != TokenType::RightParen)
 	{
-		if (Peek().type == TokenType::Identifier && Peek(1).type == TokenType::LeftParen)
+		auto _t = Peek();
+
+		if (_t.type == TokenType::Identifier && Peek(1).type == TokenType::LeftParen)
 		{
-			args.push_back(new Argument(ParseCallExpression()));
+			auto exp = new Argument(ParseCallExpression());
+			exp->line = _t.line;
+			exp->column = _t.column;
+			args.push_back(exp);
 		}
 		else
 		{
-			args.push_back(new Argument(ParseExpression()));
+			auto exp = new Argument(ParseExpression());
+			exp->line = _t.line;
+			exp->column = _t.column;
+			args.push_back(exp);
 		}
 		if (Peek().type == TokenType::RightParen)
 			break;
 		Expect(TokenType::Comma);
 	}
 	Expect(TokenType::RightParen);
-	return new CallExpression(name, args);
+
+	auto result = new CallExpression(name, args);
+	result->line = t.line;
+	result->column = t.column;
+	return result;
 }
 
 CallStatement* Parser::ParseCallStatement()
 {
 	// <call> ::= <identifier> "(" <args> ")" ;
 	// <args> ::= <expression> ("," <expression>)*
-	auto name = Expect(TokenType::Identifier).value;
+	auto t = Expect(TokenType::Identifier);
+	auto name = t.value;
 	Expect(TokenType::LeftParen);
 	std::vector<Argument*> args;
 	while (Peek().type != TokenType::RightParen)
 	{
-		args.push_back(new Argument(ParseExpression()));
+		auto _t = Peek();
+		auto exp = new Argument(ParseExpression());
+		exp->line = _t.line;
+		exp->column = _t.column;
+		args.push_back(exp);
 
 		if (Peek().type == TokenType::RightParen)
 			break;
@@ -327,7 +412,11 @@ CallStatement* Parser::ParseCallStatement()
 	}
 	Expect(TokenType::RightParen);
 	Expect(TokenType::SemiColon);
-	return new CallStatement(name, args);
+
+	auto result = new CallStatement(name, args);
+	result->line = t.line;
+	result->column = t.column;
+	return result;
 }
 
 BlockNode* Parser::ParseBlock(bool create_new_scope)
@@ -336,7 +425,7 @@ BlockNode* Parser::ParseBlock(bool create_new_scope)
 		context->CreateScope();
 
 	// <block> ::= "{" (<statements>* | e ) | ( <blocks>* | e ) "}"
-	Expect(TokenType::LeftBrace);
+	auto t = Expect(TokenType::LeftBrace);
 	std::vector<Statement*> statements;
 	while (Peek().type != TokenType::RightBrace)
 	{
@@ -363,14 +452,17 @@ BlockNode* Parser::ParseBlock(bool create_new_scope)
 	if (create_new_scope)
 		context->PopScope();
 
-	return new BlockNode(statements, context->GetCurrentScopeIndex());
+	auto result = new BlockNode(statements, context->GetCurrentScopeIndex());
+	result->line = t.line;
+	result->column = t.column;
+	return result;
 }
 
 IfStatement* Parser::ParseIfStatement()
 {
 	// <if_statement> ::= "if" <expression> "{" <body> "}" ("else" "{" <body> "}" | e)
 	// eat if
-	Expect(TokenType::If);
+	auto t = Expect(TokenType::If);
 	// eat <expression>
 	auto expression = ParseExpression();
 	Expect(TokenType::LeftBrace);
@@ -386,14 +478,17 @@ IfStatement* Parser::ParseIfStatement()
 		elseBody = ParseBlock();
 	}
 
-	return new IfStatement(expression, body, elseBody);
+	auto result = new IfStatement(expression, body, elseBody);
+	result->line = t.line;
+	result->column = t.column;
+	return result;
 }
 
 ForStatement* Parser::ParseForStatement()
 {
 	// <for_statement> ::= "for" "(" <assignment> ";" <expression> ";" <expression> ")" "{" <body> "}"
 		// eat for
-	Expect(TokenType::For);
+	auto t = Expect(TokenType::For);
 	// eat (
 	Expect(TokenType::LeftParen);
 	// eat <assignment>
@@ -426,14 +521,22 @@ ForStatement* Parser::ParseForStatement()
 	Expect(TokenType::RightParen);
 	// eat <body>
 	auto body = ParseBlock();
-	return new ForStatement(assignment, condition, inc, std::move(body));
+
+	auto result = new ForStatement(assignment, condition, inc, body);
+	result->line = t.line;
+	result->column = t.column;
+	return result;
 }
 
 ExpressionStatement* Parser::ParseExpressionStatement()
 {
+	auto t = Peek();
 	auto expression = ParseExpression();
 	Expect(TokenType::SemiColon);
-	return new ExpressionStatement(expression);
+	auto result = new ExpressionStatement(expression);
+	result->line = t.line;
+	result->column = t.column;
+	return result;
 }
 
 Statement* Parser::ParseStatement()
@@ -449,7 +552,10 @@ Statement* Parser::ParseStatement()
 		{
 			return ParseAssignmentStatement();
 		}
-	
+		else
+		{
+			return ParseExpressionStatement();
+		}
 		// why are we here?
 		assert(false);
 	}
@@ -531,29 +637,38 @@ Function* Parser::ParseFunction()
 UnaryExpression* Parser::ParseUnaryExpression()
 {
 	// <unary> ::= <unary_operator> <expression>
-	auto op_token = Eat().type;
+	auto t = Eat();
+	auto op_token = t.type;
 	auto expression = ParseExpression();
+
+	UnaryExpression* result = nullptr;
 
 	switch (op_token)
 	{
 	case TokenType::Plus:
-		return new UnaryExpression(UnaryOperatorType::Plus, expression);
+		result = new UnaryExpression(UnaryOperatorType::Plus, expression);
 		break;
 	case TokenType::Minus:
-		return new UnaryExpression(UnaryOperatorType::Minus, expression);
+		result = new UnaryExpression(UnaryOperatorType::Minus, expression);
 		break;
 	case TokenType::Not:
-		return new UnaryExpression(UnaryOperatorType::Not, expression);
+		result = new UnaryExpression(UnaryOperatorType::Not, expression);
 		break;
 	default:
+		assert(false);
 		__assume(false);
 	}
+
+	result->line = t.line;
+	result->column = t.column;
+
+	return result;
 }
 
 DeclarationStatement* Parser::ParseDeclarationStatement()
 {
 	// <assigment> ::= "let" <identifier> ( <data_type> | e ) "=" <expression> ";" 
-	Expect(TokenType::Let);
+	auto t = Expect(TokenType::Let);
 	auto name = Expect(TokenType::Identifier).value;
 	auto data_type = ExpectType();
 	if (Peek().type != TokenType::Equal)
@@ -571,19 +686,27 @@ DeclarationStatement* Parser::ParseDeclarationStatement()
 
 	context->AddVariableToScope(name, data_type);
 
-	return new DeclarationStatement(name, data_type, expression);
+	auto result = new DeclarationStatement(name, data_type, expression);
+	result->line = t.line;
+	result->column = t.column;
+	return result;
 }
 
 CppBlock* Parser::ParseCpp()
 {
-	return new CppBlock(Expect(TokenType::Cpp).value);
+	auto t = Expect(TokenType::Cpp);
+	Expect(TokenType::SemiColon);
+	auto result = new CppBlock(t.value);
+	result->line = t.line;
+	result->column = t.column;
+	return result;
 }
 
 ExternFunctionStatement* Parser::ParseExternFunctionStatement()
 {
 	// <extern_func> := "extern" "fn" <identifier> "(" <args> ")" <return_type> ";"
 	
-	Expect(TokenType::Extern);
+	auto t = Expect(TokenType::Extern);
 	Expect(TokenType::Function);
 	auto name = Expect(TokenType::Identifier).value;
 	Expect(TokenType::LeftParen);
@@ -604,25 +727,31 @@ ExternFunctionStatement* Parser::ParseExternFunctionStatement()
 	auto prototype = new FunctionPrototype(return_type, name, params);
 	context->functions[name] = prototype;
 
-	return new ExternFunctionStatement(name, prototype);
+	auto result = new ExternFunctionStatement(name, prototype);
+	result->line = t.line;
+	result->column = t.column;
+	return result;
 }
 
 ExternVariableStatement* Parser::ParseExternVariableStatement()
 {
 	// <extern_var> := "extern" <identifier> <data_type> ";"
-	Expect(TokenType::Extern);
+	auto t = Expect(TokenType::Extern);
 	auto name = Expect(TokenType::Identifier).value;
 	auto data_type = ExpectType();
 	Expect(TokenType::SemiColon);
 
 	context->AddVariableToScope(name, data_type);
 
-	return new ExternVariableStatement(name, data_type);
+	auto result = new ExternVariableStatement(name, data_type);
+	result->line = t.line;
+	result->column = t.column;
+	return result;
 }
 
 StructDefinationStatement* Parser::ParseStruct()
 {
-	Expect(TokenType::Struct);
+	auto t = Expect(TokenType::Struct);
 	auto name = Expect(TokenType::Identifier).value;
 	Expect(TokenType::LeftBrace);
 	std::vector<StructField> fields;
@@ -639,7 +768,60 @@ StructDefinationStatement* Parser::ParseStruct()
 
 	context->CreateType(name);
 
-	return new StructDefinationStatement(name, fields);
+	StructDefination* defination = new StructDefination(name, fields);
+	context->structs[name] = defination;
+
+	auto result = new StructDefinationStatement(defination);
+	result->line = t.line;
+	result->column = t.column;
+	return result;
+}
+
+MemberAccessExpression* Parser::ParseMemberAccessExpression(Expression* lhs)
+{
+	auto t = Expect(TokenType::Dot);
+	auto member = Expect(TokenType::Identifier).value;
+
+	Type result_type;
+
+	if (!lhs->data_type.IsPrimitive())
+	{
+		auto s = context->GetStructByType(lhs->data_type);
+		const auto& fields = s->fields;
+		auto found = false;
+		StructField found_field;
+		for (const auto& field : fields)
+		{
+			if (field.name == member)
+			{
+				found = true;
+				found_field = field;
+				break;
+			}
+		}
+
+		if (!found)
+		{
+			context->Error("Unknown member: " + std::string(member), Peek().line, Peek().column);
+			return nullptr; // TODO: handle this
+		}
+		
+		result_type = found_field.data_type;
+	}
+
+
+	auto result = new MemberAccessExpression(lhs, member);
+	result->data_type = result_type;
+
+	if (Peek().type == TokenType::Dot)
+	{
+		return ParseMemberAccessExpression(result);
+	}
+
+	result->line = t.line;
+	result->column = t.column;
+
+	return result;
 }
 
 Token Parser::Expect(TokenType type)
@@ -678,7 +860,16 @@ Type Parser::ExpectType()
 	case TokenType::Str: return Type::get_string();
 	case TokenType::Char: return Type::get_char();
 	case TokenType::Void: return Type::get_void();
-	default: return Type(TYPE_UNKNOWN, token.value);
+	default:
+	{
+		// if the type is not yet defined the type generator will re-check for its type again
+		auto type = context->GetType(token.value);
+		if (type)
+			return *type;
+		else
+			return Type(TYPE_UNKNOWN, token.value);
+	}
+	break;
 	}
 
 	__assume(false);

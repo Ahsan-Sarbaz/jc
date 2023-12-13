@@ -249,8 +249,19 @@ StructField::StructField(std::string_view name, Type data_type)
 {
 }
 
-StructDefinationStatement::StructDefinationStatement(std::string_view name, std::vector<StructField> fields)
+StructDefination::StructDefination(std::string_view name, const std::vector<StructField>& fields)
 	: name(name), fields(fields)
 {
+}
+
+StructDefinationStatement::StructDefinationStatement(StructDefination* defination)
+	: defination(defination)
+{
 	this->node_type = ASTNodeType::StructDefinationStatement;
+}
+
+MemberAccessExpression::MemberAccessExpression(Expression* lhs, std::string_view member)
+	: lhs(lhs), member(member)
+{
+	this->node_type = ASTNodeType::MemberAccessExpression;
 }

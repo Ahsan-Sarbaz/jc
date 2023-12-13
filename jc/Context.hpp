@@ -17,9 +17,9 @@ struct Message
 struct Context
 {
 	std::string_view input;
-	std::unordered_map<std::string_view, Type> types;
+	std::unordered_map<std::string_view, StructDefination*> structs;
+	std::unordered_map<std::string_view, Type*> types;
 	std::unordered_map<std::string_view, FunctionPrototype*> functions;
-	std::unordered_map<std::string_view, Variable*> variables;
 	std::vector<Scope*> scopes;
 	Scope* current_scope;
 	Scope* root_scope;
@@ -38,8 +38,15 @@ struct Context
 
 	void CreateProgram(const std::vector<Function*>&, const std::vector<Statement*>&);
 
-	Type CreateType(const std::string_view& name);
-	Type GetType(const std::string_view& name);
+	Type* CreateType(const std::string_view& name);
+	Type* GetType(const std::string_view& name);
+
+	
+	StructDefination* GetStructByType(const Type& type);
+	StructDefination* GetStructByVariable(Variable* variable);
+	StructDefination* GetStructByVariableName(const std::string_view& name);
+
+	bool HasVariable(const std::string_view& name);
 
 	Variable* GetVariableFromScope(const std::string_view& name);
 	Variable* AddVariableToScope(const std::string_view& name, Type data_type);

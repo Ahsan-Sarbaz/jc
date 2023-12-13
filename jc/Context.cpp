@@ -96,20 +96,20 @@ void Context::CreateProgram(const std::vector<Function*>& functions, const std::
 	program = new Program(functions, statements);
 }
 
-Type Context::CreateType(const std::string_view& name)
+Type* Context::CreateType(const std::string_view& name)
 {
-	Type type = Type{ (TypeID)(type_index++), name };
+	Type* type = new Type{ (TypeID)(type_index++), name };
 	auto it = types.find(name);
 	if (it != types.end())
 	{
 		Error("Type " + std::string(name) + " already exists", 0, 0);
-		return Type{};
+		return nullptr;
 	}
 	types[name] = type;
 	return type;
 }
 
-Type Context::GetType(const std::string_view& name)
+Type* Context::GetType(const std::string_view& name)
 {
 	auto it = types.find(name);
 	if (it != types.end())
@@ -117,7 +117,50 @@ Type Context::GetType(const std::string_view& name)
 		return it->second;
 	}
 	Error("Type " + std::string(name) + " does not exist", 0, 0);
-	return Type{};
+	return nullptr;
+}
+
+StructDefination* Context::GetStructByType(const Type& type)
+{
+	auto it = structs.find(type.name);
+	if (it != structs.end())
+	{
+		return it->second;
+	}
+
+	Error("Struct " + std::string(type.name) + " does not exist", 0, 0);
+	return nullptr;
+}
+
+StructDefination* Context::GetStructByVariable(Variable* variable)
+{
+	auto struct_name = variable->data_type.name;
+	auto it = structs.find(struct_name);
+	if (it != structs.end())
+	{
+		return it->second;
+	}
+
+	Error("Struct " + std::string(struct_name) + " does not exist", 0, 0);
+	return nullptr;
+}
+
+StructDefination* Context::GetStructByVariableName(const std::string_view& name)
+{
+	auto struct_name = GetVariableFromScope(name)->data_type.name;
+	auto it = structs.find(struct_name);
+	if (it != structs.end())
+	{
+		return it->second;
+	}
+
+	Error("Struct " + std::string(struct_name) + " does not exist", 0, 0);
+	return nullptr;
+}
+
+bool Context::HasVariable(const std::string_view& name)
+{
+	return current_scope->GetVariable(name) != nullptr;
 }
 
 Variable* Context::GetVariableFromScope(const std::string_view& name)
@@ -128,16 +171,15 @@ Variable* Context::GetVariableFromScope(const std::string_view& name)
 Variable* Context::AddVariableToScope(const std::string_view& name, Type data_type)
 {
 	current_scope->variables[name] = new Variable(name, data_type);
-	variables[name] = current_scope->variables[name];
 	return current_scope->variables[name];
 }
 
 Type Context::GetVariableDataType(const std::string_view& name)
 {
-	auto it = variables.find(name);
-	if (it != variables.end())
+	auto variable = current_scope->GetVariable(name);
+	if (variable != nullptr)
 	{
-		return it->second->data_type;
+		return variable->data_type;
 	}
 
 	return Type{};

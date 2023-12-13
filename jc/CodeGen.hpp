@@ -30,6 +30,7 @@ private:
 	void Output(std::ostream& out, IfStatement* if_statement);
 	void Output(std::ostream& out, CppBlock* cpp_block);
 	void Output(std::ostream& out, StructDefinationStatement* struct_defination);
+	void Output(std::ostream& out, MemberAccessExpression* member_access);
 
 	Context* context;
 };

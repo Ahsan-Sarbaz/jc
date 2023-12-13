@@ -42,6 +42,7 @@ private:
 	ExternFunctionStatement* ParseExternFunctionStatement();
 	ExternVariableStatement* ParseExternVariableStatement();
 	StructDefinationStatement* ParseStruct();
+	MemberAccessExpression* ParseMemberAccessExpression(Expression* lhs);
 
 	Context* context;
 	int cursor = 0;

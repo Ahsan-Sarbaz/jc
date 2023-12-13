@@ -29,17 +29,27 @@ void TypeGenertaor::GenerateDataType(Expression* expression)
 		expression->data_type = context->GetFunctionReturnType(call->name);
 		for (auto& arg : call->args)
 		{
-			GenerateDataType(arg);
+			GenerateDataType(arg->expression);
+			arg->data_type = arg->expression->data_type;
 		}
 	}
 	break;
 	case ASTNodeType::BinaryExpression:
-		GenerateDataType(static_cast<BinaryExpression*>(expression)->lhs);
-		GenerateDataType(static_cast<BinaryExpression*>(expression)->rhs);
+	{
+		auto bin = static_cast<BinaryExpression*>(expression);
+		GenerateDataType(bin->lhs);
+		GenerateDataType(bin->rhs);
+		//NOTE: is this even correct bro
+		bin->data_type = bin->lhs->data_type;
+	}
 		break;
 	case ASTNodeType::AssignmentExpression:
-		GenerateDataType(static_cast<AssignmentExpression*>(expression)->lhs);
-		GenerateDataType(static_cast<AssignmentExpression*>(expression)->rhs);
+	{
+		auto assign = static_cast<AssignmentExpression*>(expression);
+		GenerateDataType(assign->lhs);
+		GenerateDataType(assign->rhs);
+		assign->data_type = assign->lhs->data_type;
+	}
 		break;
 	case ASTNodeType::Argument:
 	{
@@ -48,7 +58,12 @@ void TypeGenertaor::GenerateDataType(Expression* expression)
 		arg->data_type = arg->expression->data_type;
 	}
 	break;
-
+	case ASTNodeType::MemberAccessExpression:
+	{
+		auto exp = static_cast<MemberAccessExpression*>(expression);
+		GenerateDataType(exp->lhs);
+	}
+		break;
 	default:
 		assert(false);
 		break;
@@ -62,7 +77,8 @@ void TypeGenertaor::GenerateDataType(Statement* statement)
 	case ASTNodeType::CallStatement:
 		for (auto& arg : static_cast<CallStatement*>(statement)->args)
 		{
-			GenerateDataType(arg);
+			GenerateDataType(arg->expression);
+			arg->data_type = arg->expression->data_type;
 		}
 		break;
 	case ASTNodeType::ExpressionStatement:
@@ -73,7 +89,9 @@ void TypeGenertaor::GenerateDataType(Statement* statement)
 		break;
 	case ASTNodeType::DeclarationStatement:
 		if (static_cast<DeclarationStatement*>(statement)->expression)
+		{
 			GenerateDataType(static_cast<DeclarationStatement*>(statement)->expression);
+		}
 		break;
 	case ASTNodeType::AssignmentStatement:
 		GenerateDataType(static_cast<AssignmentStatement*>(statement)->lhs);

@@ -171,6 +171,7 @@ void CodeGen::Output(std::ostream& out, Expression* expression)
 	case ASTNodeType::StringLiteral: Output(out, static_cast<StringLiteral*>(expression)); break;
 	case ASTNodeType::AssignmentExpression: Output(out, static_cast<AssignmentExpression*>(expression)); break;
 	case ASTNodeType::Argument: Output(out, static_cast<Argument*>(expression)->expression); break;
+	case ASTNodeType::MemberAccessExpression: Output(out, static_cast<MemberAccessExpression*>(expression)); break;
 	default:
 		assert(false);
 		break;
@@ -250,10 +251,16 @@ void CodeGen::Output(std::ostream& out, Program* program)
 
 void CodeGen::Output(std::ostream& out, StructDefinationStatement* struct_defination)
 {
-	out << "struct " << struct_defination->name << "\n{\n";
-	for (const auto& field : struct_defination->fields)
+	out << "struct " << struct_defination->defination->name << "\n{\n";
+	for (const auto& field : struct_defination->defination->fields)
 	{
 		out << "\t" << field.data_type.name << " " << field.name << ";\n";
 	}
 	out << "};\n";
+}
+
+void CodeGen::Output(std::ostream& out, MemberAccessExpression* member_access)
+{
+	Output(out, member_access->lhs);
+	out << "." << member_access->member;
 }

@@ -5,12 +5,32 @@ fn add(a i32, b i32) i32
 
 struct Point
 {
-	x i32,
-	y i32,
+	x f32,
+	y f32,
+}
+
+struct Line
+{
+	start Point,
+	end Point,
+}
+
+extern fn sqrt(x f32) f32;
+
+fn distance(p1 Point, p2 Point) f32
+{
+	return sqrt((p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y));
 }
 
 fn main() i32 
 {
-	let p Point;
-	return add(p, 123);
+	let line Line;
+	line.start.x = 1.0f;
+	line.start.y = 2.0f;
+	line.end.x = 3.0f;
+	line.end.y = 4.0f;
+
+	let d f32 = distance(line.start, line.end);
+
+	return 0;
 }

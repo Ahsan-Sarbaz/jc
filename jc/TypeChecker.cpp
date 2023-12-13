@@ -18,7 +18,9 @@ void TypeChecker::CheckDataType(Expression* expression)
 	case ASTNodeType::NumberLiteral:
 	case ASTNodeType::StringLiteral:
 	case ASTNodeType::Variable:
+	case ASTNodeType::MemberAccessExpression:
 		break;
+
 	case ASTNodeType::CallExpression:
 	{
 		auto call = static_cast<CallExpression*>(expression);
@@ -32,12 +34,12 @@ void TypeChecker::CheckDataType(Expression* expression)
 				if (IsTypeCompatible(arg->data_type, function->params[i].data_type))
 				{
 					context->Warning("Implicit Conversion: " + std::string(TypeToString(arg->data_type)) + " -> " + 
-						std::string(TypeToString(function->params[i].data_type)), 0, 0);
+						std::string(TypeToString(function->params[i].data_type)), arg->line, arg->column);
 				}
 				else
 				{
 					context->Error("Type Mismatch: " + std::string(TypeToString(arg->data_type)) + " != " +
-						std::string(TypeToString(function->params[i].data_type)), 0, 0);
+						std::string(TypeToString(function->params[i].data_type)), arg->line, arg->column);
 				}
 			}
 			i++;
@@ -48,17 +50,19 @@ void TypeChecker::CheckDataType(Expression* expression)
 	case ASTNodeType::BinaryExpression:
 	{
 		auto be = static_cast<BinaryExpression*>(expression);
+		CheckDataType(be->lhs);
+		CheckDataType(be->rhs);
 		if (be->lhs->data_type != be->rhs->data_type)
 		{
 			if (IsTypeCompatible(be->lhs->data_type, be->rhs->data_type))
 			{
 				context->Warning("Implicit Conversion: " + std::string(TypeToString(be->lhs->data_type)) + " -> " +
-					std::string(TypeToString(be->rhs->data_type)), 0, 0);
+					std::string(TypeToString(be->rhs->data_type)), be->lhs->line, be->lhs->column);
 			}
 			else
 			{
 				context->Error("Type Mismatch: " + std::string(TypeToString(be->lhs->data_type)) + " != " +
-					std::string(TypeToString(be->rhs->data_type)), 0, 0);
+					std::string(TypeToString(be->rhs->data_type)), be->lhs->line, be->lhs->column);
 			}
 		}
 	}
@@ -67,17 +71,19 @@ void TypeChecker::CheckDataType(Expression* expression)
 	case ASTNodeType::AssignmentExpression:
 	{
 		auto ae = static_cast<AssignmentExpression*>(expression);
+		CheckDataType(ae->lhs);
+		CheckDataType(ae->rhs);
 		if (ae->lhs->data_type != ae->rhs->data_type)
 		{
-			if (IsTypeCompatible(ae->lhs->data_type, ae->rhs->data_type))
+			if (IsTypeCompatible(ae->rhs->data_type, ae->lhs->data_type))
 			{
-				context->Warning("Implicit Conversion: " + std::string(TypeToString(ae->lhs->data_type)) + " -> " +
-					std::string(TypeToString(ae->rhs->data_type)), 0, 0);
+				context->Warning("Implicit Conversion: " + std::string(TypeToString(ae->rhs->data_type)) + " -> " +
+					std::string(TypeToString(ae->lhs->data_type)), ae->lhs->line, ae->lhs->column);
 			}
 			else
 			{
-				context->Error("Type Mismatch: " + std::string(TypeToString(ae->lhs->data_type)) + " != " +
-					std::string(TypeToString(ae->rhs->data_type)), 0, 0);
+				context->Error("Type Mismatch: " + std::string(TypeToString(ae->rhs->data_type)) + " != " +
+					std::string(TypeToString(ae->lhs->data_type)), ae->lhs->line, ae->lhs->column);
 			}
 		}
 	}
@@ -112,12 +118,12 @@ void TypeChecker::CheckDataType(Statement* statement)
 				if (IsTypeCompatible(arg->data_type, function->params[i].data_type))
 				{
 					context->Warning("Implicit Conversion: " + std::string(TypeToString(arg->data_type)) + " -> " +
-						std::string(TypeToString(function->params[i].data_type)), 0, 0);
+						std::string(TypeToString(function->params[i].data_type)), arg->line, arg->column);
 				}
 				else
 				{
 					context->Error("Type Mismatch: " + std::string(TypeToString(arg->data_type)) + " != " +
-						std::string(TypeToString(function->params[i].data_type)), 0, 0);
+						std::string(TypeToString(function->params[i].data_type)), arg->line, arg->column);
 				}
 			}
 			i++;
@@ -141,12 +147,12 @@ void TypeChecker::CheckDataType(Statement* statement)
 				if (IsTypeCompatible(ds->data_type, ds->expression->data_type))
 				{
 					context->Warning("Implicit Conversion: " + std::string(TypeToString(ds->data_type)) + " -> " +
-						std::string(TypeToString(ds->expression->data_type)), 0, 0);
+						std::string(TypeToString(ds->expression->data_type)), ds->line, ds->column);
 				}
 				else
 				{
 					context->Error("Type Mismatch: " + std::string(TypeToString(ds->data_type)) + " != " +
-						std::string(TypeToString(ds->expression->data_type)), 0, 0);
+						std::string(TypeToString(ds->expression->data_type)), ds->line, ds->column);
 				}
 			}
 		}
@@ -162,12 +168,12 @@ void TypeChecker::CheckDataType(Statement* statement)
 			if (IsTypeCompatible(as->lhs->data_type, as->rhs->data_type))
 			{
 				context->Warning("Implicit Conversion: " + std::string(TypeToString(as->lhs->data_type)) + " -> " +
-					std::string(TypeToString(as->rhs->data_type)), 0, 0);
+					std::string(TypeToString(as->rhs->data_type)), as->lhs->line, as->lhs->column);
 			}
 			else
 			{
 				context->Error("Type Mismatch: " + std::string(TypeToString(as->lhs->data_type)) + " != " +
-					std::string(TypeToString(as->rhs->data_type)), 0, 0);
+					std::string(TypeToString(as->rhs->data_type)), as->lhs->line, as->lhs->column);
 			}
 		}
 	}
